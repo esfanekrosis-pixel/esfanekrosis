@@ -1,30 +1,42 @@
 # Le Train des Animaux
 
-Petit jeu pour les enfants à partir de 3 ans. Un train à vapeur traverse des paysages, s'arrête dans les gares et emmène les animaux à la fête.
+Petit jeu éducatif pour les enfants à partir de 3 ans, dessiné comme un livre d'images (traits de feutre, couleurs au crayon, papier). Un train à vapeur traverse des paysages, s'arrête dans les gares et emmène cinq animaux à la fête.
 
 ## Jouer
 
-Ouvre `index.html` dans un navigateur (tablette, téléphone ou ordinateur). Tout tient dans ce seul fichier.
+Ouvre `index.html` dans un navigateur. Tout tient dans ce seul fichier.
 
-## Commandes
+## Commandes : uniquement les flèches
 
-Une seule règle : **toucher l'écran** (ou appuyer sur **n'importe quelle touche**).
+| Flèche | Pendant le voyage | En gare | Sur les rails | À la fête |
+|---|---|---|---|---|
+| → | plus vite | choisir la carte de droite | – | encore un voyage |
+| ← | doucement (frein) | choisir la carte de gauche | – | éclater un ballon |
+| ↑ | sifflet « tchou tchou » | – | siffler pour pousser l'animal | feu d'artifice |
+| ↓ | cloche « ding ding » | – | – | éclater un ballon |
 
-- Le train roule : il siffle « tchou tchou » et accélère.
-- Le train est en gare : l'animal saute dans un wagon.
-- À la fête : un nouveau voyage commence avec le gros bouton vert « Encore ! ».
+Les autres touches ne font rien. Sur tablette, des flèches dessinées en bas à droite remplacent le clavier, et on peut aussi toucher les cartes. La flèche à utiliser clignote quand l'enfant hésite.
 
-Il n'y a ni échec, ni chrono, ni texte à lire. Si l'enfant attend en gare, une petite main lui montre l'animal.
+## Ce que l'enfant apprend
+
+À chaque gare, un animal pose une question avec deux cartes, une à gauche et une à droite :
+
+- **Animaux** : « Où est le cochon ? », « Qui fait Meuh ? »
+- **Couleurs** : « Où est le ballon rouge ? »
+- **Compter** (jusqu'à 3, puis jusqu'à 5) : « Où il y a trois pommes ? », puis la voix compte « un, deux, trois »
+- **Grand et petit** : « Où est le petit chat ? »
+- **Formes** (à partir du 2ᵉ voyage) : rond, carré, triangle, étoile, cœur
+- **Qui mange quoi** (à partir du 3ᵉ voyage) : la carotte du lapin, la banane du singe…
+- **Gauche, droite, haut, bas**, grâce aux flèches. La voix dit « C'était à gauche ! ».
+
+On ne peut pas perdre. Après une erreur, la voix nomme ce qui a été choisi (« Non, ça c'est le chat ») et la bonne flèche clignote. Chaque bonne réponse ajoute un souvenir sur le wagon : un ballon, une forme, un fruit.
 
 ## Rejouabilité
 
 - 6 paysages tirés au hasard : ferme, forêt d'automne, neige, savane, plage, nuit étoilée.
-- 40 animaux à trouver, qui disent leur nom et leur cri (synthèse vocale en français). La licorne est rare.
-- Un album (bouton 📖) garde les animaux déjà trouvés sur l'appareil. Les animaux pas encore vus sortent plus souvent.
-- Surprises sur la route : tunnels (« Coucou ! »), ponts avec des poissons qui sautent, ballons à éclater, arc-en-ciel.
-- Les couleurs du train et des wagons changent à chaque voyage. Le conducteur est un ami de l'album.
-- Petits secrets : toucher les animaux dans les wagons, le soleil ou la lune.
+- 40 animaux dessinés, avec leur nom et leur cri. Les animaux pas encore vus sortent plus souvent, et la licorne est rare.
+- Un voyage dure 2 à 3 minutes : 5 gares, des tunnels (« Coucou ! »), des ponts avec des poissons, un animal sur les rails à faire partir au sifflet, puis la fête où l'on compte les amis.
 
 ## Pour les parents
 
-En haut à droite : l'album, le son et le plein écran. Le jeu garde l'écran allumé pendant la partie quand l'appareil le permet.
+En haut à droite : l'album (animaux trouvés et nombre de bonnes réponses par thème), le son et le plein écran. L'album est enregistré sur l'appareil.
