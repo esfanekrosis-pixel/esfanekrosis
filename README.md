@@ -21,12 +21,12 @@ Les autres touches ne font rien. Sur tablette, des flèches dessinées en bas à
 
 À chaque gare, un animal pose une question avec deux cartes, une à gauche et une à droite :
 
-- **Animaux** : « Où est le cochon ? », « Qui fait Meuh ? »
+- **Animaux** : « Où est le cochon ? », « Qui fait meuh ? ». Les cris demandés sont seulement ceux des livres d'images (vache, cochon, mouton, poule, cheval, canard, chien, chat, grenouille, hibou, loup, lion). Le mauvais choix est toujours un animal connu, jamais un sosie (pas de chien contre loup).
 - **Couleurs** : « Où est le ballon rouge ? »
-- **Compter** (jusqu'à 3, puis jusqu'à 5) : « Où il y a trois pommes ? », puis la voix compte « un, deux, trois »
+- **Compter** (jusqu'à 3, puis jusqu'à 5) : « Où sont les trois pommes ? », puis la voix compte « un, deux, trois ». Après une erreur, elle compte aussi la mauvaise carte.
 - **Grand et petit** : « Où est le petit chat ? »
 - **Formes** (à partir du 2ᵉ voyage) : rond, carré, triangle, étoile, cœur
-- **Qui mange quoi** (à partir du 3ᵉ voyage) : la carotte du lapin, la banane du singe…
+- **Qui mange quoi** (à partir du 3ᵉ voyage) : seulement les paires évidentes. Le lapin et la carotte, le singe et la banane, le chien et l'os, le chat et le poisson, la vache et l'herbe, la poule et les graines…
 - **Gauche, droite, haut, bas**, grâce aux flèches. La voix dit « C'était à gauche ! ».
 
 On ne peut pas perdre. Après une erreur, la voix nomme ce qui a été choisi (« Non, ça c'est le chat ») et la bonne flèche clignote. Chaque bonne réponse ajoute un souvenir sur le wagon : un ballon, une forme, un fruit.
@@ -34,7 +34,7 @@ On ne peut pas perdre. Après une erreur, la voix nomme ce qui a été choisi (�
 ## Rejouabilité
 
 - 6 paysages tirés au hasard : ferme, forêt d'automne, neige, savane, plage, nuit étoilée.
-- 40 animaux dessinés, avec leur nom et leur cri. Les animaux pas encore vus sortent plus souvent, et la licorne est rare.
+- 40 animaux dessinés en entier, comme dans un album, avec pattes, queue et ombres au crayon. Ils disent leur cri, ou une petite phrase vraie pour ceux qui n'ont pas de cri connu (« J'ai un très long cou ! »). Les animaux pas encore vus sortent plus souvent, et la licorne est rare.
 - Un voyage dure 2 à 3 minutes : 5 gares, des tunnels (« Coucou ! »), des ponts avec des poissons, un animal sur les rails à faire partir au sifflet, puis la fête où l'on compte les amis.
 
 ## Pour les parents
