@@ -401,20 +401,46 @@ function pickVoice() {
   } catch (e) { voice = null; }
 }
 if (canSpeak) { pickVoice(); speechSynthesis.onvoiceschanged = pickVoice; }
+// Utterances still to be spoken. Holding them stops Chrome from garbage-collecting one before it plays.
+const talking = new Set();
+let held = null, missed = null;
+function utter(text) {
+  const u = new SpeechSynthesisUtterance(text.replace(/’/g, "'").replace(/[«»]/g, ''));
+  u.lang = 'fr-FR'; if (voice) u.voice = voice; u.rate = 0.92; u.pitch = 1.2;
+  u.onend = () => talking.delete(u);
+  // Before the first tap or key press the browser refuses to speak, so the line is kept and spoken on the next one.
+  u.onerror = e => { talking.delete(u); if (e.error === 'not-allowed') missed = text; };
+  return u;
+}
+function speakNow(u) {
+  const ss = speechSynthesis;
+  if (ss.paused) ss.resume();
+  talking.add(u); ss.speak(u);
+}
 function say(text, queue) {
   if (muted || !canSpeak) return;
   try {
-    if (!queue) speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text.replace(/’/g, "'").replace(/[«»]/g, ''));
-    u.lang = 'fr-FR'; if (voice) u.voice = voice; u.rate = 0.92; u.pitch = 1.2;
-    speechSynthesis.speak(u);
+    if (!voice) pickVoice();
+    const u = utter(text), ss = speechSynthesis;
+    if (held) { if (!queue) held.length = 0; held.push(u); return; }
+    if (!queue && (ss.speaking || ss.pending)) {
+      // Chrome on macOS drops an utterance spoken in the same tick as cancel(), so wait for the cancel to settle.
+      ss.cancel(); talking.clear(); held = [u];
+      setTimeout(() => { const list = held; held = null; list.forEach(speakNow); }, 90);
+      return;
+    }
+    speakNow(u);
   } catch (e) { /* no voice on this device */ }
 }
 function unlock() {
   initAudio();
-  if (canSpeak && !speechPrimed && !muted) {
+  if (!canSpeak || muted) return;
+  if (missed) { const t = missed; missed = null; say(t); return; }
+  if (!speechPrimed) {
+    // iPad Safari only lets speech start inside a touch, so say a real word, very softly, on the first one.
+    // A blank utterance can stay "speaking" forever in Chrome and block every line after it.
     speechPrimed = true;
-    try { const u = new SpeechSynthesisUtterance(' '); u.volume = 0; speechSynthesis.speak(u); } catch (e) { /* ignore */ }
+    try { const u = utter('oui'); u.volume = 0.01; u.rate = 2; speakNow(u); } catch (e) { /* ignore */ }
   }
 }
 
@@ -1382,9 +1408,9 @@ function arrive() {
   }
   G.state = 'quiz'; G.q = makeQuestion(o); SFX.bell();
   showBanner(G.q.from === 'card' ? null : o.animal.id, G.q.text);
-  const first = !G.tips.lr; G.tips.lr = true;
-  later(0.5, () => { if (G.q && !G.q.done) say(G.q.speech + (first ? ' Flèche de gauche, ou flèche de droite ?' : '')); });
-  if (first) setHint(['l', 'r']);
+  // Every question ends with which arrows to use, so a child can play just by listening.
+  later(0.5, () => { if (G.q && !G.q.done) say(G.q.speech + ' Flèche de gauche, ou flèche de droite ?'); });
+  if (!G.tips.lr) { G.tips.lr = true; setHint(['l', 'r']); }
 }
 
 function answer(side) {
@@ -1594,7 +1620,7 @@ function update(dt) {
     q.t += dt; q.idle += dt;
     for (let i = 0; i < 2; i++) { q.shake[i] = Math.max(0, q.shake[i] - dt * 2.5); q.pop[i] = Math.max(0, q.pop[i] - dt * 1.5); }
     if (q.leave) q.leave += dt * 2.5;
-    if (!q.done && q.idle > 9) { q.idle = 0; say(q.speech); setHint(['l', 'r']); }
+    if (!q.done && q.idle > 9) { q.idle = 0; say(q.speech + ' Flèche de gauche, ou flèche de droite ?'); setHint(['l', 'r']); }
   }
   if (G.state === 'blocked') {
     G.waitT += dt;
@@ -2210,7 +2236,7 @@ function updateAlbumChip(bump) {
 function setMuted(m) {
   muted = m;
   if (MASTER) MASTER.gain.value = m ? 0 : 0.8;
-  if (m && canSpeak) try { speechSynthesis.cancel(); } catch (e) { /* ignore */ }
+  if (m && canSpeak) try { held = null; missed = null; talking.clear(); speechSynthesis.cancel(); } catch (e) { /* ignore */ }
   soundBtn.innerHTML = m ? ICON_OFF : ICON_ON;
   soundBtn.setAttribute('aria-label', m ? 'Remettre le son' : 'Couper le son');
 }
@@ -2285,7 +2311,7 @@ encoreBtn.addEventListener('click', () => { unlock(); nextTrip(); });
 albumBtn.addEventListener('click', openAlbum);
 $('closeAlbum').addEventListener('click', closeAlbum);
 albumEl.addEventListener('click', e => { if (e.target === albumEl) closeAlbum(); });
-soundBtn.addEventListener('click', () => { unlock(); setMuted(!muted); save(); soundBtn.blur(); });
+soundBtn.addEventListener('click', () => { unlock(); setMuted(!muted); save(); soundBtn.blur(); if (!muted) say('Coucou ! Tu m’entends ?'); });
 if (!(document.fullscreenEnabled || document.webkitFullscreenEnabled)) fsBtn.hidden = true;
 fsBtn.addEventListener('click', () => {
   const d = document;
