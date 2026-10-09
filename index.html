@@ -207,6 +207,7 @@ button:focus-visible { outline: 4px dashed var(--berry); outline-offset: 4px; }
 
 <noscript>Ce jeu a besoin de JavaScript.</noscript>
 
+<script src="voice.js"></script>
 <script>
 (() => {
 'use strict';
@@ -417,7 +418,7 @@ function speakNow(u) {
   if (ss.paused) ss.resume();
   talking.add(u); ss.speak(u);
 }
-function say(text, queue) {
+function speakTTS(text, queue) {
   if (muted || !canSpeak) return;
   try {
     if (!voice) pickVoice();
@@ -435,13 +436,56 @@ function say(text, queue) {
 function unlock() {
   initAudio();
   if (!canSpeak || muted) return;
-  if (missed) { const t = missed; missed = null; say(t); return; }
+  if (missed) { const t = missed; missed = null; speakTTS(t); return; }
   if (!speechPrimed) {
     // iPad Safari only lets speech start inside a touch, so say a real word, very softly, on the first one.
     // A blank utterance can stay "speaking" forever in Chrome and block every line after it.
     speechPrimed = true;
     try { const u = utter('oui'); u.volume = 0.01; u.rate = 2; speakNow(u); } catch (e) { /* ignore */ }
   }
+}
+
+// Recorded voice (voice.js): each line is cut at '|' into pieces that were recorded one by one.
+// It plays through the game's own sound, so it works where the browser has no voice, like the Claude app.
+const CLIPS = window.VOICE_CLIPS || {}, clipBuf = {};
+let vq = [], vNow = null, vGen = 0;
+const vkey = s => { s = s.trim().replace(/’/g, "'").replace(/[«»]/g, '').replace(/\s+/g, ' '); return s.charAt(0).toLowerCase() + s.slice(1); };
+function clip(k) {
+  if (!clipBuf[k]) {
+    const bin = atob(CLIPS[k]), a = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i);
+    clipBuf[k] = new Promise((res, rej) => AC.decodeAudioData(a.buffer, res, rej));
+  }
+  return clipBuf[k];
+}
+function stopVoice() {
+  vGen++; vq = [];
+  if (vNow && vNow.stop) try { vNow.stop(); } catch (e) { /* already ended */ }
+  vNow = null;
+}
+async function playNext() {
+  if (vNow || !vq.length || !AC) return;
+  const gen = vGen, k = vq.shift();
+  vNow = 'loading';
+  let buf = null;
+  try { buf = await clip(k); } catch (e) { /* undecodable clip: skip it */ }
+  if (gen !== vGen) return;
+  if (!buf) { vNow = null; playNext(); return; }
+  const src = AC.createBufferSource(); src.buffer = buf; src.connect(MASTER);
+  src.onended = () => { if (vNow === src) { vNow = null; playNext(); } };
+  vNow = src; src.start(AC.currentTime + 0.04);
+}
+function say(text, queue) {
+  if (muted) return;
+  const parts = text.split('|').map(vkey).filter(Boolean);
+  if (window.__voiceMiss) parts.forEach(k => { if (!CLIPS[k]) window.__voiceMiss.add(k); });
+  if (AC && parts.every(k => CLIPS[k])) {
+    if (!queue) { stopVoice(); if (canSpeak) try { speechSynthesis.cancel(); } catch (e) { /* ignore */ } }
+    vq.push(...parts); playNext();
+    return;
+  }
+  if (!queue) stopVoice();
+  speakTTS(text.replace(/\|/g, ' '), queue);
 }
 
 /* ---------- felt-pen drawing kit ---------- */
@@ -1354,19 +1398,19 @@ function makeQuestion(st) {
   } else if (type === 'color') {
     const [c1, c2] = shuffle(COLORS.slice());
     put({ kind: 'balloon', color: c1.c }, { kind: 'balloon', color: c2.c }, `le ballon ${c1.name}`, `le ballon ${c2.name}`);
-    q.text = `Où est le ballon ${c1.name} ?`; q.speech = `${a.n} veut le ballon ${c1.name}. ${q.text}`;
+    q.text = `Où est le ballon ${c1.name} ?`; q.speech = `${a.n}|veut le ballon ${c1.name}.|${q.text}`;
     q.skill = 'couleurs'; q.deco = { kind: 'balloon', color: c1.c };
   } else if (type === 'count') {
     const max = G.trips >= 2 ? 5 : 3, food = pick(COUNTABLE), F = FOODS[food], n = irnd(2, max);
     let m; do { m = irnd(1, max); } while (m === n);
     const word = k => k === 1 ? `${F.f ? 'une seule' : 'un seul'} ${F.sg}` : `${NUM[k]} ${F.pl}`;
     put({ kind: 'count', n, food, hl: 0 }, { kind: 'count', n: m, food, hl: 0 }, word(n), word(m));
-    q.text = `Où sont les ${word(n)} ?`; q.speech = `${a.n} veut ${word(n)}. ${q.text}`;
+    q.text = `Où sont les ${word(n)} ?`; q.speech = `${a.n}|veut ${word(n)}.|${q.text}`;
     q.skill = 'nombres'; q.countN = n; q.deco = { kind: 'food', food };
   } else if (type === 'shape') {
     const [s1, s2] = shuffle(Object.keys(SHAPES)), [c1, c2] = shuffle(COLORS.slice());
     put({ kind: 'shape', shape: s1, color: c1.c }, { kind: 'shape', shape: s2, color: c2.c }, SHAPES[s1], SHAPES[s2]);
-    q.text = `Où est ${SHAPES[s1]} ?`; q.speech = `${a.n} cherche ${SHAPES[s1]}. ${q.text}`;
+    q.text = `Où est ${SHAPES[s1]} ?`; q.speech = `${a.n}|cherche ${SHAPES[s1]}.|${q.text}`;
     q.skill = 'formes'; q.deco = { kind: 'shape', shape: s1, color: c1.c };
   } else if (type === 'size') {
     const big = Math.random() < 0.5, art = a.f ? 'la' : 'le', g = a.f ? 'grande' : 'grand', p = a.f ? 'petite' : 'petit';
@@ -1376,7 +1420,7 @@ function makeQuestion(st) {
   } else {
     const good = EATS[a.id], bad = pick(MEAT_EATERS.has(a.id) ? ['carotte', 'banane', 'herbe'] : ['os', 'poisson']);
     put({ kind: 'food', food: good }, { kind: 'food', food: bad }, FOODS[good].art, FOODS[bad].art);
-    q.text = `Qu’est-ce que mange ${low(a.n)} ?`; q.speech = `${a.n} a faim ! Qu’est-ce qu’${a.f ? 'elle' : 'il'} mange ?`;
+    q.text = `Qu’est-ce que mange ${low(a.n)} ?`; q.speech = `${a.n}|a faim !|Qu’est-ce qu’${a.f ? 'elle' : 'il'} mange ?`;
     q.skill = 'manger'; q.deco = { kind: 'food', food: good };
   }
   items.forEach((it, i) => { it.seed = Math.round(st.wx) % 97 + i * 7; it.flip = i === 1; });
@@ -1402,14 +1446,14 @@ function arrive() {
   if (o.type === 'obstacle') {
     G.state = 'blocked'; SFX.brake();
     showBanner(o.animal.id, 'Siffle avec la flèche du haut !');
-    say(`Oh ! ${o.animal.n} est sur les rails ! Siffle avec la flèche du haut !`);
+    say(`Oh !|${o.animal.n}|est sur les rails !|Siffle avec la flèche du haut !`);
     setHint(['u']);
     return;
   }
   G.state = 'quiz'; G.q = makeQuestion(o); SFX.bell();
   showBanner(G.q.from === 'card' ? null : o.animal.id, G.q.text);
   // Every question ends with which arrows to use, so a child can play just by listening.
-  later(0.5, () => { if (G.q && !G.q.done) say(G.q.speech + ' Flèche de gauche, ou flèche de droite ?'); });
+  later(0.5, () => { if (G.q && !G.q.done) say(G.q.speech + '|Flèche de gauche, ou flèche de droite ?'); });
   if (!G.tips.lr) { G.tips.lr = true; setHint(['l', 'r']); }
 }
 
@@ -1424,8 +1468,8 @@ function answer(side) {
       const it = q.items[side], m = it.n;
       it.hl = 0;
       for (let i = 1; i <= m; i++) later(0.9 + i * 0.5, () => { it.hl = i; });
-      say(`Non, là il y a ${lab}.${m > 1 ? ` On compte : ${NUM.slice(1, m + 1).join(', ')}.` : ''} Essaie de l’autre côté !`);
-    } else say(`Non, ça c’est ${lab}. Essaie de l’autre côté !`);
+      say(`Non, là il y a ${lab}.${m > 1 ? `|On compte : ${NUM.slice(1, m + 1).join(', ')}.` : ''}|Essaie de l’autre côté !`);
+    } else say(`Non, ça c’est ${lab}.|Essaie de l’autre côté !`);
     setHint([q.answer ? 'r' : 'l']);
     return;
   }
@@ -1436,12 +1480,12 @@ function answer(side) {
   const where = side ? 'à droite' : 'à gauche';
   let wait = 1.6;
   if (q.type === 'count') {
-    say('Bravo ! ' + NUM.slice(1, q.countN + 1).join(', ') + ' !');
+    say('Bravo !|' + NUM.slice(1, q.countN + 1).join(', ') + ' !');
     for (let i = 1; i <= q.countN; i++) later(0.45 + i * 0.55, () => { q.items[side].hl = i; SFX.sparkle(); });
     wait = 1.4 + q.countN * 0.55;
-  } else if (q.type === 'food') say(`Miam ! ${q.a.n} adore ${FOODS[q.items[side].food].love} !`);
-  else if (q.type === 'name' || q.type === 'sound') say(`Bravo ! C’est ${low(q.a.n)} ! C’était ${where} !`);
-  else say(`Bravo ! C’était ${where} !`);
+  } else if (q.type === 'food') say(`Miam !|${q.a.n}|adore ${FOODS[q.items[side].food].love} !`);
+  else if (q.type === 'name' || q.type === 'sound') say(`Bravo !|C’est ${low(q.a.n)} !|C’était ${where} !`);
+  else say(`Bravo !|C’était ${where} !`);
   later(wait, board);
 }
 
@@ -1478,7 +1522,7 @@ function clearObstacle() {
   const o = G.target;
   o.cleared = true; o.away = 0.001;
   clearHint(); hideBanner(); toot();
-  say(`Merci ! ${talk(o.animal)}`);
+  say(`Merci !|${talk(o.animal)}`);
   later(1.3, () => depart(null));
 }
 
@@ -1494,7 +1538,7 @@ function startParty() {
   }));
   later(1.2 + n * 0.75, () => {
     if (G.state !== 'party') return;
-    say(`${NUM[n]} amis dans le train ! Youpi, c’est la fête !`, true);
+    say(`${NUM[n]} amis dans le train !|Youpi, c’est la fête !`, true);
     if (G.newFound.length) showBanner(G.newFound[0].id, G.newFound.length > 1 ? `${G.newFound.length} nouveaux amis dans l’album !` : 'Un nouvel ami dans l’album !');
   });
   spawnBalloons(7);
@@ -1620,7 +1664,7 @@ function update(dt) {
     q.t += dt; q.idle += dt;
     for (let i = 0; i < 2; i++) { q.shake[i] = Math.max(0, q.shake[i] - dt * 2.5); q.pop[i] = Math.max(0, q.pop[i] - dt * 1.5); }
     if (q.leave) q.leave += dt * 2.5;
-    if (!q.done && q.idle > 9) { q.idle = 0; say(q.speech + ' Flèche de gauche, ou flèche de droite ?'); setHint(['l', 'r']); }
+    if (!q.done && q.idle > 9) { q.idle = 0; say(q.speech + '|Flèche de gauche, ou flèche de droite ?'); setHint(['l', 'r']); }
   }
   if (G.state === 'blocked') {
     G.waitT += dt;
@@ -2236,6 +2280,7 @@ function updateAlbumChip(bump) {
 function setMuted(m) {
   muted = m;
   if (MASTER) MASTER.gain.value = m ? 0 : 0.8;
+  if (m) stopVoice();
   if (m && canSpeak) try { held = null; missed = null; talking.clear(); speechSynthesis.cancel(); } catch (e) { /* ignore */ }
   soundBtn.innerHTML = m ? ICON_OFF : ICON_ON;
   soundBtn.setAttribute('aria-label', m ? 'Remettre le son' : 'Couper le son');
@@ -2256,7 +2301,7 @@ function buildAlbum() {
     b.setAttribute('aria-label', found ? a.n : 'Animal pas encore trouvé');
     b.addEventListener('click', () => {
       unlock();
-      say(found ? `${a.n} ! ${talk(a)}` : 'Mystère ! Pars en voyage pour le trouver.');
+      say(found ? `${a.n}|${talk(a)}` : 'Mystère ! Pars en voyage pour le trouver.');
       b.classList.remove('wiggle'); void b.offsetWidth; b.classList.add('wiggle');
     });
     grid.append(b);

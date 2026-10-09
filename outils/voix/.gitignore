@@ -1,0 +1,4 @@
+clips/
+*.onnx
+voices-v1.0.bin
+lines.json
