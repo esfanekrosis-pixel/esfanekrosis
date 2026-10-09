@@ -43,6 +43,6 @@ En haut à droite : l'album (animaux trouvés et nombre de bonnes réponses par 
 
 ## La voix
 
-Toutes les phrases sont enregistrées à l'avance dans `voice.js` (voix française Kokoro « siwis ») et passent par le son du jeu, comme les bruitages. Elles marchent donc aussi là où le navigateur n'a pas de voix, comme l'app Claude. Il faut garder `voice.js` à côté de `index.html`. Sans lui, le jeu se rabat sur la voix du navigateur.
+Toutes les phrases sont enregistrées à l'avance dans `voice.js` (voix française « Pierre », Piper) et passent par le son du jeu, comme les bruitages. Elles marchent donc aussi là où le navigateur n'a pas de voix, comme l'app Claude. Il faut garder `voice.js` à côté de `index.html`. Sans lui, le jeu se rabat sur la voix du navigateur.
 
 Si une phrase du jeu change, il faut la réenregistrer : `node outils/voix/getlines.js`, puis `python gen.py` dans `outils/voix/` (les détails sont en tête des fichiers).

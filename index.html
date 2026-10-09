@@ -448,32 +448,48 @@ function unlock() {
 // Recorded voice (voice.js): each line is cut at '|' into pieces that were recorded one by one.
 // It plays through the game's own sound, so it works where the browser has no voice, like the Claude app.
 const CLIPS = window.VOICE_CLIPS || {}, clipBuf = {};
-let vq = [], vNow = null, vGen = 0;
+let vq = [], vSrc = [], vBusy = false, vEnd = 0, vGen = 0;
 const vkey = s => { s = s.trim().replace(/’/g, "'").replace(/[«»]/g, '').replace(/\s+/g, ' '); return s.charAt(0).toLowerCase() + s.slice(1); };
+// Decodes a clip once and finds where the voice really starts and stops, so the silence the encoder adds is skipped.
 function clip(k) {
   if (!clipBuf[k]) {
     const bin = atob(CLIPS[k]), a = new Uint8Array(bin.length);
     for (let i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i);
-    clipBuf[k] = new Promise((res, rej) => AC.decodeAudioData(a.buffer, res, rej));
+    clipBuf[k] = new Promise((res, rej) => AC.decodeAudioData(a.buffer, res, rej)).then(buf => {
+      const d = buf.getChannelData(0), sr = buf.sampleRate;
+      let i0 = 0, i1 = d.length - 1;
+      while (i0 < i1 && Math.abs(d[i0]) < 0.012) i0++;
+      while (i1 > i0 && Math.abs(d[i1]) < 0.012) i1--;
+      const from = Math.max(0, i0 / sr - 0.012), to = Math.min(buf.duration, i1 / sr + 0.04);
+      return { buf, from, len: Math.max(0.05, to - from) };
+    });
   }
   return clipBuf[k];
 }
 function stopVoice() {
-  vGen++; vq = [];
-  if (vNow && vNow.stop) try { vNow.stop(); } catch (e) { /* already ended */ }
-  vNow = null;
+  vGen++; vq = []; vBusy = false; vEnd = 0;
+  for (const src of vSrc) try { src.stop(); } catch (e) { /* already ended */ }
+  vSrc = [];
 }
-async function playNext() {
-  if (vNow || !vq.length || !AC) return;
-  const gen = vGen, k = vq.shift();
-  vNow = 'loading';
-  let buf = null;
-  try { buf = await clip(k); } catch (e) { /* undecodable clip: skip it */ }
-  if (gen !== vGen) return;
-  if (!buf) { vNow = null; playNext(); return; }
-  const src = AC.createBufferSource(); src.buffer = buf; src.connect(MASTER);
-  src.onended = () => { if (vNow === src) { vNow = null; playNext(); } };
-  vNow = src; src.start(AC.currentTime + 0.04);
+// Plays the queued pieces back to back: a breath after a full sentence, almost none inside one.
+async function playQueue() {
+  if (vBusy || !AC) return;
+  vBusy = true;
+  const gen = vGen;
+  while (vq.length) {
+    const k = vq.shift();
+    let c = null;
+    try { c = await clip(k); } catch (e) { /* undecodable clip: skip it */ }
+    if (gen !== vGen) return;
+    if (!c) continue;
+    const now = AC.currentTime, gap = vEnd > now ? (vSrc.length && /[.!?…]$/.test(vSrc[vSrc.length - 1].k) ? 0.2 : 0.035) : 0;
+    const at = Math.max(now + 0.02, vEnd + gap);
+    const src = AC.createBufferSource(); src.buffer = c.buf; src.connect(MASTER); src.k = k;
+    src.onended = () => { vSrc = vSrc.filter(x => x !== src); };
+    src.start(at, c.from, c.len);
+    vSrc.push(src); vEnd = at + c.len;
+  }
+  vBusy = false;
 }
 function say(text, queue) {
   if (muted) return;
@@ -481,7 +497,7 @@ function say(text, queue) {
   if (window.__voiceMiss) parts.forEach(k => { if (!CLIPS[k]) window.__voiceMiss.add(k); });
   if (AC && parts.every(k => CLIPS[k])) {
     if (!queue) { stopVoice(); if (canSpeak) try { speechSynthesis.cancel(); } catch (e) { /* ignore */ } }
-    vq.push(...parts); playNext();
+    vq.push(...parts); parts.forEach(k => clip(k).catch(() => {})); playQueue();
     return;
   }
   if (!queue) stopVoice();

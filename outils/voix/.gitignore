@@ -1,4 +1,4 @@
-clips/
-*.onnx
+clips*/
+vits-piper-*/
 voices-v1.0.bin
 lines.json
